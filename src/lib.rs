@@ -3,33 +3,8 @@ use nj_sys as sys;
 use std::{ffi::CString, ptr};
 
 macro_rules! lookup {
-    ($name: expr, (_)) => {{
-        let _f: unsafe extern "C" fn(_) -> _ = $name;
-        lookup(_f, stringify!($name))
-    }};
-
-    ($name: expr, (_, _)) => {{
-        let _f: unsafe extern "C" fn(_, _) -> _ = $name;
-        lookup(_f, stringify!($name))
-    }};
-
-    ($name: expr, (_, _, _)) => {{
-        let _f: unsafe extern "C" fn(_, _, _) -> _ = $name;
-        lookup(_f, stringify!($name))
-    }};
-
-    ($name: expr, (_, _, _, _)) => {{
-        let _f: unsafe extern "C" fn(_, _, _, _) -> _ = $name;
-        lookup(_f, stringify!($name))
-    }};
-
-    ($name: expr, (_, _, _, _, _)) => {{
-        let _f: unsafe extern "C" fn(_, _, _, _, _) -> _ = $name;
-        lookup(_f, stringify!($name))
-    }};
-
-    ($name: expr, (_, _, _, _, _, _)) => {{
-        let _f: unsafe extern "C" fn(_, _, _, _, _, _) -> _ = $name;
+    ($name: expr, ($($t:ty),*)) => {{
+        let _f: unsafe extern "C" fn($($t),*) -> _ = $name;
         lookup(_f, stringify!($name))
     }};
 }
