@@ -1,7 +1,6 @@
 fn main() {
-    println!(
-        "cargo:rustc-link-search={}",
-        r#"C:\Users\amos\AppData\Local\node-gyp\Cache\13.12.0\x64"#
-    );
-    println!("cargo:rustc-link-lib={}", "node");
+    println!("cargo:rustc-cdylib-link-arg=-undefined");
+    if cfg!(target_os = "macos") {
+        println!("cargo:rustc-cdylib-link-arg=dynamic_lookup");
+    }
 }

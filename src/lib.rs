@@ -35,5 +35,11 @@ unsafe extern "C" fn register(env: sys::napi_env, exports: sys::napi_value) -> s
     let mut ret: sys::napi_value = ptr::null_mut();
     sys::napi_create_object(env, &mut ret);
 
-    ret
+    let mut s = ptr::null_mut();
+    let s_src = "Just yanking yer chain";
+    sys::napi_create_string_utf8(env, s_src.as_ptr() as *const i8, s_src.len(), &mut s);
+
+    // ret
+
+    s
 }
