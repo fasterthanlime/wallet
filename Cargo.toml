@@ -1,0 +1,12 @@
+[package]
+name = "wallet"
+version = "0.1.0"
+authors = ["Amos Wenger <amoswenger@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ctor = "0.1.13"
+nj-sys = "1.0.0"
