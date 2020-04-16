@@ -2,10 +2,62 @@ use ctor::ctor;
 use nj_sys as sys;
 use std::{ffi::CString, ptr};
 
+macro_rules! lookup {
+    ($name: expr, (_)) => {{
+        let _f: unsafe extern "C" fn(_) -> _ = $name;
+        lookup(_f, stringify!($name))
+    }};
+
+    ($name: expr, (_, _)) => {{
+        let _f: unsafe extern "C" fn(_, _) -> _ = $name;
+        lookup(_f, stringify!($name))
+    }};
+
+    ($name: expr, (_, _, _)) => {{
+        let _f: unsafe extern "C" fn(_, _, _) -> _ = $name;
+        lookup(_f, stringify!($name))
+    }};
+
+    ($name: expr, (_, _, _, _)) => {{
+        let _f: unsafe extern "C" fn(_, _, _, _) -> _ = $name;
+        lookup(_f, stringify!($name))
+    }};
+
+    ($name: expr, (_, _, _, _, _)) => {{
+        let _f: unsafe extern "C" fn(_, _, _, _, _) -> _ = $name;
+        lookup(_f, stringify!($name))
+    }};
+
+    ($name: expr, (_, _, _, _, _, _)) => {{
+        let _f: unsafe extern "C" fn(_, _, _, _, _, _) -> _ = $name;
+        lookup(_f, stringify!($name))
+    }};
+}
+
+#[cfg(windows)]
+fn lookup<T>(_t: T, name: &str) -> T {
+    let name = name.split("::").last().unwrap();
+    let name = CString::new(name).unwrap();
+    let addr = unsafe { winapi::um::libloaderapi::GetProcAddress(ptr::null_mut(), name.as_ptr()) };
+    if addr.is_null() {
+        panic!("could not find {:?}", name);
+    }
+    println!("looked up {:?} to {:?}", name, addr);
+    unsafe { std::mem::transmute_copy(&addr) }
+}
+
+#[cfg(not(windows))]
+fn lookup<T>(t: T, name: &str) -> T {
+    t
+}
+
 #[ctor]
 #[no_mangle]
 fn ctor() {
     println!("Hello from wallet");
+
+    let napi_module_register = lookup!(sys::napi_module_register, (_));
+
     unsafe {
         let modname = CString::new("wallet").unwrap();
         let filename = CString::new("lib.rs").unwrap();
@@ -15,7 +67,7 @@ fn ctor() {
             nm_flags: 0,
             nm_filename: filename.as_ptr(),
             nm_modname: modname.as_ptr(),
-            nm_register_func: Some(register),
+            nm_register_func: Some(init),
             nm_priv: ptr::null_mut(),
             reserved: [
                 ptr::null_mut(),
@@ -24,22 +76,26 @@ fn ctor() {
                 ptr::null_mut(),
             ],
         };
-        sys::napi_module_register(&mut module);
+        println!("calling it...");
+        napi_module_register(&mut module);
+        println!("called it!");
     }
 }
 
 #[no_mangle]
-unsafe extern "C" fn register(env: sys::napi_env, exports: sys::napi_value) -> sys::napi_value {
-    println!("In register! exports = {:?}", exports);
+unsafe extern "C" fn init(env: sys::napi_env, exports: sys::napi_value) -> sys::napi_value {
+    println!("In init! exports = {:?}", exports);
+
+    let napi_create_object = lookup!(sys::napi_create_object, (_, _));
+    let napi_create_string_utf8 = lookup!(sys::napi_create_string_utf8, (_, _, _, _));
 
     let mut ret: sys::napi_value = ptr::null_mut();
-    sys::napi_create_object(env, &mut ret);
+    napi_create_object(env, &mut ret);
 
     let mut s = ptr::null_mut();
     let s_src = "Just yanking yer chain";
-    sys::napi_create_string_utf8(env, s_src.as_ptr() as *const i8, s_src.len(), &mut s);
+    napi_create_string_utf8(env, s_src.as_ptr() as *const i8, s_src.len(), &mut s);
 
     // ret
-
     s
 }

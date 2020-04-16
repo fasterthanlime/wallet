@@ -10,3 +10,4 @@ crate-type = ["cdylib"]
 [dependencies]
 ctor = "0.1.13"
 nj-sys = "1.0.0"
+winapi = { version = "0.3.8", features = ["libloaderapi"] }
