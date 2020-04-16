@@ -1,4 +1,3 @@
-use ctor::ctor;
 use nj_sys as sys;
 use std::{ffi::CString, ptr};
 
@@ -34,8 +33,17 @@ fn lookup<T>(_t: T, name: &str) -> T {
     unsafe { std::mem::transmute_copy(&addr) }
 }
 
-#[ctor]
-#[no_mangle]
+#[used]
+#[cfg_attr(target_os = "linux", link_section = ".ctors")]
+#[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
+#[cfg_attr(target_os = "windows", link_section = ".CRT$XCU")]
+pub static CTOR_ENTRY: extern "C" fn() = {
+    extern "C" fn ctor_thunk() {
+        ctor();
+    };
+    ctor_thunk
+};
+
 fn ctor() {
     println!("Hello from wallet");
 
