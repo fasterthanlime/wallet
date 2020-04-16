@@ -2,10 +2,23 @@ use ctor::ctor;
 use nj_sys as sys;
 use std::{ffi::CString, ptr};
 
-macro_rules! lookup {
+macro_rules! fixup {
     ($name: expr, ($($t:ty),*)) => {{
-        let _f: unsafe extern "C" fn($($t),*) -> _ = $name;
-        lookup(_f, stringify!($name))
+        #[cfg(windows)]
+        {
+            let f: unsafe extern "C" fn($($t),*) -> _ = $name;
+            let addr = lookup(f, stringify!($name));
+
+            unsafe {
+                println!("detouring {:?} => {:?}", $name as *const (), addr as *const ());
+                let detour = detour::RawDetour::new(
+                    $name as *const (),
+                    addr as *const (),
+                ).unwrap();
+                detour.enable().unwrap();
+                Box::leak(Box::new(detour));
+            }
+        }
     }};
 }
 
@@ -17,13 +30,8 @@ fn lookup<T>(_t: T, name: &str) -> T {
     if addr.is_null() {
         panic!("could not find {:?}", name);
     }
-    println!("looked up {:?} to {:?}", name, addr);
+    println!("looked up {:?} => {:?}", name, addr);
     unsafe { std::mem::transmute_copy(&addr) }
-}
-
-#[cfg(not(windows))]
-fn lookup<T>(t: T, name: &str) -> T {
-    t
 }
 
 #[ctor]
@@ -31,7 +39,10 @@ fn lookup<T>(t: T, name: &str) -> T {
 fn ctor() {
     println!("Hello from wallet");
 
-    let napi_module_register = lookup!(sys::napi_module_register, (_));
+    // TODO: fix up everything
+    fixup!(sys::napi_module_register, (_));
+    fixup!(sys::napi_create_object, (_, _));
+    fixup!(sys::napi_create_string_utf8, (_, _, _, _));
 
     unsafe {
         let modname = CString::new("wallet").unwrap();
@@ -52,7 +63,7 @@ fn ctor() {
             ],
         };
         println!("calling it...");
-        napi_module_register(&mut module);
+        sys::napi_module_register(&mut module);
         println!("called it!");
     }
 }
@@ -61,16 +72,12 @@ fn ctor() {
 unsafe extern "C" fn init(env: sys::napi_env, exports: sys::napi_value) -> sys::napi_value {
     println!("In init! exports = {:?}", exports);
 
-    let napi_create_object = lookup!(sys::napi_create_object, (_, _));
-    let napi_create_string_utf8 = lookup!(sys::napi_create_string_utf8, (_, _, _, _));
-
     let mut ret: sys::napi_value = ptr::null_mut();
-    napi_create_object(env, &mut ret);
+    sys::napi_create_object(env, &mut ret);
 
     let mut s = ptr::null_mut();
     let s_src = "Just yanking yer chain";
-    napi_create_string_utf8(env, s_src.as_ptr() as *const i8, s_src.len(), &mut s);
+    sys::napi_create_string_utf8(env, s_src.as_ptr() as *const i8, s_src.len(), &mut s);
 
-    // ret
     s
 }

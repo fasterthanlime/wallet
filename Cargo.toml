@@ -11,3 +11,4 @@ crate-type = ["cdylib"]
 ctor = "0.1.13"
 nj-sys = "1.0.0"
 winapi = { version = "0.3.8", features = ["libloaderapi"] }
+detour = { version = "0.7.1", default-features = false }
