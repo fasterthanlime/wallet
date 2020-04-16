@@ -11,5 +11,5 @@ crate-type = ["cdylib"]
 nj-sys = "1.0.0"
 
 [target.'cfg(windows)'.dependencies]
-detour = { version = "0.7.1", default-features = false }
-winapi = { version = "0.3.8", features = ["libloaderapi"] }
+# detour = { version = "0.7.1", default-features = false }
+winapi = { version = "0.3.8", features = ["libloaderapi", "memoryapi"] }

@@ -4,19 +4,67 @@ use std::{ffi::CString, ptr};
 macro_rules! fixup {
     ($name: expr, ($($t:ty),*)) => {{
         #[cfg(windows)]
-        {
-            let f: unsafe extern "C" fn($($t),*) -> _ = $name;
-            let addr = lookup(f, stringify!($name));
+        unsafe {
+            const PAGE_EXECUTE_READWRITE: u32 = 0x40;
+            use winapi::ctypes::c_void;
 
-            unsafe {
-                println!("detouring {:?} => {:?}", $name as *const (), addr as *const ());
-                let detour = detour::RawDetour::new(
-                    $name as *const (),
-                    addr as *const (),
-                ).unwrap();
-                detour.enable().unwrap();
-                Box::leak(Box::new(detour));
+            let f: unsafe extern "C" fn($($t),*) -> _ = $name;
+            let real = lookup(f, stringify!($name));
+
+            println!("name = {:?}, real = {:?}", $name as *const (), real as *const ());
+            let diff: isize = $name as isize - real as isize;
+            println!("diff = {:?}, i32::max = {:?}", diff, std::i32::MAX);
+
+            // TODO: support 32-bit
+            let mut template: Vec<u8> = vec![0x48, 0xb8];
+            template.extend(&(real as usize).to_le_bytes());
+            template.extend(&[0xff, 0xe0]);
+            print!("full template is {} bytes:", template.len());
+            for b in &template {
+                print!(" {:02x}", b);
             }
+            println!();
+
+            let mut old_prot = 0;
+            let new_prot = PAGE_EXECUTE_READWRITE;
+            println!("de-protecting...");
+            let ret = winapi::um::memoryapi::VirtualProtect(
+                $name as *mut c_void,
+                template.len(),
+                new_prot,
+                &mut old_prot,
+            );
+            println!("ret = {:?}", ret);
+            if (ret == 0) {
+                panic!("could not de-protect");
+            }
+
+            println!("copying...");
+            std::ptr::copy_nonoverlapping(
+                template.as_ptr(),
+                $name as *mut u8,
+                template.len(),
+            );
+
+            println!("re-protecting...");
+            let ret = winapi::um::memoryapi::VirtualProtect(
+                $name as *mut c_void,
+                template.len(),
+                old_prot,
+                &mut old_prot,
+            );
+            println!("ret = {:?}", ret);
+            if (ret == 0) {
+                panic!("could not re-protect");
+            }
+
+            // println!("detouring {:?} => {:?}", $name as *const (), real as *const ());
+            // let detour = detour::RawDetour::new(
+            //     $name as *const (),
+            //     real as *const (),
+            // ).unwrap();
+            // detour.enable().unwrap();
+            // Box::leak(Box::new(detour));
         }
     }};
 }
@@ -44,6 +92,7 @@ pub static CTOR_ENTRY: extern "C" fn() = {
     ctor_thunk
 };
 
+#[no_mangle]
 fn ctor() {
     println!("Hello from wallet");
 
