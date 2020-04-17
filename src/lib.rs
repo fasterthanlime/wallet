@@ -23,6 +23,15 @@ fn ctor() {
     fixup!(sys::napi_create_object, (_, _));
     fixup!(sys::napi_create_string_utf8, (_, _, _, _));
 
+    // union ungodly {
+    //     c: unsafe extern "C" fn(*mut sys::napi_module),
+    //     s: unsafe extern "stdcall" fn(*mut sys::napi_module),
+    // };
+    // let u = ungodly {
+    //     c: sys::napi_module_register,
+    // };
+    // let napi_module_register = unsafe { u.s };
+
     unsafe {
         let modname = CString::new("wallet").unwrap();
         let filename = CString::new("lib.rs").unwrap();
@@ -41,8 +50,10 @@ fn ctor() {
                 ptr::null_mut(),
             ],
         };
+        let module = Box::leak(Box::new(module));
+
         println!("calling it...");
-        sys::napi_module_register(&mut module);
+        sys::napi_module_register(module);
         println!("called it!");
 
         debug_hook();
