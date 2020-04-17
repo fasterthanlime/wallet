@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <malloc.h>
 #include <stdio.h>
 
 typedef void *(*napi_addon_register_func)(void *nv,
@@ -16,6 +17,11 @@ typedef struct {
 
 __declspec(dllexport) void napi_module_register(napi_module *module) {
     printf("in napi_module_register, module = %p\n", module);
+
+    printf("doing an alloca\n");
+    char *mem = _alloca(128);
+    printf("allocated mem is at = %p\n", mem);
+
     printf("func = %p\n", module->nm_register_func);
     printf("calling...\n", module->nm_register_func);
     module->nm_register_func(0, 0);
