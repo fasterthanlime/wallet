@@ -7,7 +7,7 @@ use std::{
 const PAGE_EXECUTE_READWRITE: u32 = 0x40;
 
 #[link(name = "kernel32")]
-extern "C" {
+extern "stdcall" {
     fn GetProcAddress(module: *mut c_void, name: *const c_char) -> *const c_void;
     fn VirtualProtect(addr: *mut c_void, len: usize, new_prot: u32, old_prot: *mut u32) -> u32;
 }
@@ -29,7 +29,7 @@ where
     virtual_protect(addr, len, old_prot);
 }
 
-unsafe fn get_proc_address(name: &str) -> *const c_void {
+pub unsafe fn get_proc_address(name: &str) -> *const c_void {
     let name = name.split("::").last().unwrap();
     let name = CString::new(name).unwrap();
 
@@ -48,14 +48,25 @@ pub unsafe fn hook(name: &str, thunk: *const c_void) {
         thunk as *const (), real as *const ()
     );
 
-    // TODO: support 32-bit
-
     const FILL: u8 = 0xF1;
-    let mut template: [u8; 12] = [
-        0x48, 0xb8, FILL, FILL, FILL, FILL, FILL, FILL, FILL, FILL, 0xff, 0xe0,
-    ];
+    let offset: usize;
+
+    #[cfg(target_arch = "x86")]
+    let mut template: [u8; 7] = {
+        offset = 1;
+        [0xb8, FILL, FILL, FILL, FILL, 0xff, 0xe0]
+    };
+
+    #[cfg(target_arch = "x86_64")]
+    let mut template: [u8; 12] = {
+        offset = 2;
+        [
+            0x48, 0xb8, FILL, FILL, FILL, FILL, FILL, FILL, FILL, FILL, 0xff, 0xe0,
+        ]
+    };
+
     let dest = (real as usize).to_le_bytes();
-    ptr::copy_nonoverlapping(dest.as_ptr(), &mut template[2], dest.len());
+    ptr::copy_nonoverlapping(dest.as_ptr(), &mut template[offset], dest.len());
 
     print!("full template ({} bytes):", template.len());
     for b in &template {

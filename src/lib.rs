@@ -44,8 +44,14 @@ fn ctor() {
         println!("calling it...");
         sys::napi_module_register(&mut module);
         println!("called it!");
+
+        debug_hook();
     }
 }
+
+#[no_mangle]
+#[inline(never)]
+fn debug_hook() {}
 
 #[no_mangle]
 unsafe extern "C" fn init(env: sys::napi_env, exports: sys::napi_value) -> sys::napi_value {

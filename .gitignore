@@ -1,4 +1,9 @@
 /target
-/*.node
-/*.o
-/*.a
+*.node
+*.o
+*.a
+*.dll
+*.exe
+*.exp
+*.lib
+*.obj
