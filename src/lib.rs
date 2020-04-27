@@ -23,15 +23,6 @@ fn ctor() {
     fixup!(sys::napi_create_object, (_, _));
     fixup!(sys::napi_create_string_utf8, (_, _, _, _));
 
-    // union ungodly {
-    //     c: unsafe extern "C" fn(*mut sys::napi_module),
-    //     s: unsafe extern "stdcall" fn(*mut sys::napi_module),
-    // };
-    // let u = ungodly {
-    //     c: sys::napi_module_register,
-    // };
-    // let napi_module_register = unsafe { u.s };
-
     unsafe {
         let modname = CString::new("wallet").unwrap();
         let filename = CString::new("lib.rs").unwrap();
